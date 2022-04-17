@@ -82,7 +82,7 @@ var showList = async (user, client, flag) => {
         list = JSON.parse(list)
         if (flag == 'p')  var l = new List('set progress','list of task',list,'','')
         else if (flag == 'r') var l = new List('remove task','list of task',list,'','') 
-        client.sendMessage('919879034832@c.us',l)
+        client.sendMessage(user,l)
     })
     .catch ((err)=>{
         console.log(err)
@@ -93,9 +93,9 @@ client.on('message',(msg)=>{
     var s_msg = formatMessage(msg.body)
   
     if (s_msg === 'HI') {
-        client.sendMessage('919879034832@c.us','hi');
-        client.sendMessage('919879034832@c.us',btn)
-        // client.sendMessage('919879034832@c.us',btn);
+        client.sendMessage(msg.from,'hi');
+        client.sendMessage(msg.from,btn)
+        // client.sendMessage(msg.from,btn);
 
     }
 
@@ -105,7 +105,7 @@ client.on('message',(msg)=>{
             showList(msg.from, client, 'p')
         }
         else if (msg.selectedButtonId == 'snt') {
-            client.sendMessage('919879034832@c.us','enter description for new task')
+            client.sendMessage(msg.from,'enter description for new task')
         }
         else if (msg.selectedButtonId == 'rmt') {
             showList(msg.from, client, 'r')
@@ -122,7 +122,7 @@ client.on('message',(msg)=>{
                     res.additional = msg.body;
                     if (actionQ[i].action == 'prg'){
                         res.progress = '';
-                        client.sendMessage('919879034832@c.us',ratingList)
+                        client.sendMessage(msg.from,ratingList)
                     }
                     
                     watcher(actionQ,client,btn)
