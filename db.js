@@ -1,4 +1,5 @@
-var mysql = require('mysql2')
+var mysql = require('mysql2');
+const { client } = require('./allModules');
 
 var connection = mysql.createConnection({
     host:'localhost',
@@ -82,27 +83,46 @@ var getProgressData = (user)=>{
     })}
 )}
 
-var watcher = (queue)=>{
+var watcher = (queue,client,btn)=>{
     queue.forEach((obj)=>{
         var action = obj.action;
         
         if (action == 'snt') {
             if (obj.additional && obj.userID) {
                 connection.query(`CALL set_new_task(?,?)`,[obj.userID, obj.additional],(err,results,fields)=>{
-                if (err) console.log(err)
+                    if (err) console.log(err)
+                    else {
+                        client.sendMessage(obj.userID,'new task added')
+                        client.sendMessage('919879034832@c.us',btn)
+                    }
                 })
             } 
         }
-        else if (action === 'prg') {
+        else if (action == 'prg') {
             if (obj.additional && obj.progress) {
-                console.log('comming ... prg db...')
                 connection.query(`CALL progress(?,?)`,[obj.userID,obj.progress],(err,results,fields)=>{
                     if (err){
                         console.log(err)
                     }
-                    else console.log(results)
+                    else  {
+                        client.sendMessage(obj.userID,'porgress rating updated')
+                        client.sendMessage('919879034832@c.us',btn)
+                    }
                 })
             }
+        }
+        else if (action == 'rmt') {
+            
+                connection.query(`CALL remove_task(?,?)`,[obj.userID,obj.additional],(err,results,fields)=>{
+                    if (err) {
+                        console.log(err)
+                    }
+                    else {
+                        client.sendMessage(obj.userID,'task deleted')
+                        client.sendMessage('919879034832@c.us',btn)
+                    }
+                })
+                  
         }
     })
 }

@@ -54,9 +54,13 @@ var btn = new Buttons('buttons : ',[
         body:'delete task'
     }],'','')
 
-var exlist = new List('something','button text',[{'title':'sectionTitle','rows':[{'rowId':'customId','title':'ListItem1','description':'desc'},{'rowId':'oGSRoD','title':'ListItem2','description':''}]}],'','')
+// var exlist = new List('something','button text',[{'title':'sectionTitle','rows':[{'rowId':'customId','title':'ListItem1','description':'desc'},{'rowId':'oGSRoD','title':'ListItem2','description':''}]}],'','')
 
-var showList = async (user, client) => {
+var ratingList = `[{"title":"Rating","rows":[{"rowId":"1","title":"1","description":""},{"rowId":"2","title":"2","description":""},{"rowId":"3","title":"3","description":""},{"rowId":"4","title":"4","description":""},{"rowId":"5","title":"5","description":""}]}]`
+ratingList = JSON.parse(ratingList)
+ratingList = new List('set progress','rating',ratingList,'','')
+
+var showList = async (user, client, flag) => {
     var listJSON1 = `[{"title":"List Of Task","rows":[`;
     var listJSON3 = ']}]';
     var listJSON2 = '';
@@ -76,19 +80,18 @@ var showList = async (user, client) => {
 
     .then((list)=>{
         list = JSON.parse(list)
-// var exlist = new List('set progress','list of task',[{'title':'sectionTitle','rows':[{'rowId':'customId','title':'ListItem1','description':'desc'},{'rowId':'oGSRoD','title':'ListItem2','description':''}]}],'','')
-
-        var l = new List('set progress','list of task',list,'','')
+        if (flag == 'p')  var l = new List('set progress','list of task',list,'','')
+        else if (flag == 'r') var l = new List('remove task','list of task',list,'','') 
         client.sendMessage('919879034832@c.us',l)
-    }).catch ((err)=>{
+    })
+    .catch ((err)=>{
         console.log(err)
     });
 }
 
 client.on('message',(msg)=>{
-    console.log(msg.body)
     var s_msg = formatMessage(msg.body)
-    
+  
     if (s_msg === 'HI') {
         client.sendMessage('919879034832@c.us','hi');
         client.sendMessage('919879034832@c.us',btn)
@@ -99,42 +102,56 @@ client.on('message',(msg)=>{
     else if (msg?._data?.type === 'buttons_response') {
         actionQadd(msg.from, msg.selectedButtonId)
         if (msg.selectedButtonId == 'prg') {
-            // list_task(msg.from,client);
-            showList(msg.from, client)
+            showList(msg.from, client, 'p')
         }
-    }
-    else if (msg?.type == 'list_response') {
-        for (i=0;i<=actionQ.length;i++){
-            if (actionQ[i].userID == msg.from && actionQ[i].additional == '') {
-                var res = actionQ[i];
-                res.additional = msg.body;
-                res.progress = '';
-                console.log(actionQ)
-                // trigger event 
-                watcher(actionQ)
-                return;
-            }
+        else if (msg.selectedButtonId == 'snt') {
+            client.sendMessage('919879034832@c.us','enter description for new task')
+        }
+        else if (msg.selectedButtonId == 'rmt') {
+            showList(msg.from, client, 'r')
         }
     }
 
-    else if (s_msg !== 'HI') {
-        for (i=0;i<=actionQ.length;i++){
-            if (actionQ[i].userID == msg.from) {
-                if (actionQ[i].action == 'prg' && actionQ[i].additional != '' ) {
-                    console.log(actionQ)       
-                    var res = actionQ[i];
-                    res.progress = msg.body;
-                }
-                
-                else if (actionQ[i].additional == ''){
+    else if(msg?._data?.type === 'list_response') {
+        var listType = msg?._data?.quotedMsg?.list?.buttonText
+        
+        if (listType == 'list of task') {
+            for (i=0;i<=actionQ.length;i++){
+                if (actionQ[i].userID == msg.from && actionQ[i].additional == '') {
                     var res = actionQ[i];
                     res.additional = msg.body;
+                    if (actionQ[i].action == 'prg'){
+                        res.progress = '';
+                        client.sendMessage('919879034832@c.us',ratingList)
+                    }
+                    
+                    watcher(actionQ,client,btn)
+                    return;
                 }
-                
-                // trigger event 
-                watcher(actionQ)
-                return;
             }
+        }
+        else if ( listType == 'rating') {
+            for (i=0;i<=actionQ.length;i++){
+                if (actionQ[i].userID == msg.from) {
+                    if (actionQ[i].action == 'prg' && actionQ[i].additional != '' ) {
+                              
+                        var res = actionQ[i];
+                        res.progress = msg.body;
+                    }                  
+                    watcher(actionQ,client,btn)
+                    return;
+                }
+            }
+        }
+    }
+    else {
+        for (i=0;i<=actionQ.length;i++){
+            if (actionQ[i].additional == ''){
+                var res = actionQ[i];
+                res.additional = msg.body;
+            }  
+            watcher(actionQ,client,btn)
+            return;
         }
     }
     
