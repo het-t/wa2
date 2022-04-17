@@ -100,7 +100,7 @@ var watcher = (queue,client,btn)=>{
         }
         else if (action == 'prg') {
             if (obj.additional && obj.progress) {
-                connection.query(`CALL progress(?,?)`,[obj.userID,obj.progress],(err,results,fields)=>{
+                connection.query(`CALL progress(?,?,?)`,[obj.userID,obj.additional,obj.progress],(err,results,fields)=>{
                     if (err){
                         console.log(err)
                     }
