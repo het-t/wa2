@@ -1,5 +1,6 @@
 var pdf = require('html-pdf');
 var con = require('./db.js').connection;
+var cron = require('cron').CronJob;
 var {Client, MessageMedia} = require('whatsapp-web.js');
 let sessionData;
 
@@ -7,6 +8,7 @@ var fs = require('fs');
 const { resolve } = require('path');
 const SESSION_FILE_PATH = './session.json';
 var qrcode = require('qrcode-terminal');
+const { job } = require('cron');
 
 
 if(fs.existsSync(SESSION_FILE_PATH)) {
@@ -43,35 +45,22 @@ var date = new Date().getDate();
 var userIdArray = [];
 var pdfArray = [];
 
-var u = async ()=>{
-        
-        con.query(`CALL get_all_user()`,(err,results)=>{
+
+var makePdf = async (html,userID)=>{   
+
+    var fileName = `./${userID.replace('.','')}${date}.pdf`;
+    pdf.create(html).toFile(fileName,(err)=>{
         if (err) console.log(err)
-        //else console.log('all users ... ',results[0])
-        userIdArray = results[0];
-        userIdArray.forEach(elem => {
-            getProgressData(elem.user)
-        });
-        return userIdArray
-    })
+        else {
+            pdfArray.push(fileName)
+
+
+        }
+
+    });
 }
 
-//helper function 1
-var getProgressData =  (userID)=>{
-    
-        con.query(`CALL get_data_for_report(?)`,userID,(err,results,fields)=>{
-        if (err) {
-            console.log(err)
-        }
-        else {
-            createReport(results[0],userID)
-            console.log(results[0])
-        }
-    }
-)}
-
-//helper function 2
-var createReport = (dataForPdf,userID)=>{
+var createReport = async (dataForPdf,userID)=>{
     var htmlReportData = '';
     dataForPdf.forEach(obj => {
         var m = obj.date.getMonth()+1;
@@ -81,38 +70,71 @@ var createReport = (dataForPdf,userID)=>{
         htmlReportData += `<tbody><tr><td>${date}</td><td>${obj.description}</td><td>${obj.progress}</td></tr>`
     })
     var html = htmlAbove + htmlReportData + htmlBelow;    
-    console.log(html)
-    makePdf(html,userID)
+    await makePdf(html,userID)
 }
-
-//helper function 3
-var makePdf = async (html,userID)=>{   
-    var fileName = `./${userID.replace('.','')}${date}.pdf`;
-    await pdf.create(html).toFile(fileName,(err)=>{
-        if (err) console.log(err)
-    });
-    console.log(fileName)
-    pdfArray.push(fileName)
-    //console.log(pdfArray)
+var getProgressData =  (userID)=>{
+    
+    return new Promise((resolve,reject)=>{
+        con.query(`CALL get_data_for_report(?)`,userID,(err,results,fields)=>{
+            if (err) {
+                console.log(err)
+                reject()
+            }
+            else {
+                var resAndUid = {
+                    res:results[0],
+                    uid:userID
+                }
+                resolve(resAndUid)
+            }
+    })
 }
+)}
+var getAllUsers = ()=>{
 
+    return new Promise ((resolve,reject)=>{
+
+        con.query(`CALL get_all_user()`,(err,results)=>{
+            if (err) {
+                console.log(err)
+                reject()
+            }else {
+                userIdArray = results[0];
+                resolve(userIdArray)
+            }
+        })
+    })
+}
 
 var p = async () => {
+    await clientini()
     pdfArray.forEach( (pdfelem)=>{
         var media = MessageMedia.fromFilePath(pdfelem)
         var user = pdfelem.substr(2,16)
         user = user.replace('c','c.')
-    if (user== '919879034832@c.us') client.sendMessage(user,media)
+    if (user== '919879034832@c.us') client.sendMessage('919879034832@c.us',media)
     })
-}
-
-var main = async ()=>{
+} 
+var clientini = async ()=> {
     await client.initialize()
-    var media = MessageMedia.fromFilePath('./p.pdf')
-    client.sendMessage('919879034832@c.us',media)
-    await u()
-    setTimeout(()=>{
-        p()
-    },1000)
 }
-main()
+var u = getAllUsers();
+
+u.then(async (user_id_array)=>{
+    await user_id_array.forEach((uidObj)=>{
+        getProgressData(uidObj.user).then((obj)=>{
+            createReport(obj.res,obj.uid)
+        })
+    })
+})
+
+
+setTimeout(() => {
+    p()
+}, 600);
+
+// var shecudleSending = new job('*/10 * * * * *',()=>{
+//     console.log('------job----------')
+//     p()
+// })
+// shecudleSending.start();
