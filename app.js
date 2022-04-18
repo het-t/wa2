@@ -1,6 +1,7 @@
 const { List } = require('whatsapp-web.js');
 var {client, Buttons} = require('./allModules.js')
 var {watcher, connection, set_new_task} = require('./db.js')
+const { job } = require('cron');
 
 var formatMessage = (str)=> {
     str = str.toUpperCase();
@@ -42,7 +43,7 @@ var actionQadd =  (uID , act)=> {
     })
 }
 
-var btn = new Buttons('buttons : ',[
+var btn = new Buttons(' ',[
     {
         id:'prg',
         body:'set progress'    
@@ -52,9 +53,9 @@ var btn = new Buttons('buttons : ',[
     },{
         id:'rmt',
         body:'delete task'
-    }],'','')
+    }],'menu','')
 
-// var exlist = new List('something','button text',[{'title':'sectionTitle','rows':[{'rowId':'customId','title':'ListItem1','description':'desc'},{'rowId':'oGSRoD','title':'ListItem2','description':''}]}],'','')
+
 
 var ratingList = `[{"title":"Rating","rows":[{"rowId":"1","title":"1","description":""},{"rowId":"2","title":"2","description":""},{"rowId":"3","title":"3","description":""},{"rowId":"4","title":"4","description":""},{"rowId":"5","title":"5","description":""}]}]`
 ratingList = JSON.parse(ratingList)
@@ -69,7 +70,7 @@ var showList = async (user, client, flag) => {
     listData = await list_task(user)
  
     new Promise ((resolve,reject)=>{
-            if (listData){    
+            if (listData != ''){    
                 listData.forEach(obj => {
                     if (listJSON2 !== '') {listJSON2+=','}
                     var taskID = obj.taskID;
@@ -89,8 +90,7 @@ var showList = async (user, client, flag) => {
         else if (flag == 'r') var l = new List('remove task','list of task',list,'','')
         client.sendMessage(user,l)
     },()=>{
-        client.sendMessage(user,'invalid operation : \n you don\'t have any task \n first add new task')
-        reject()
+        client.sendMessage(user,'invalid operation \nyou don\'t have any task \nfirst add new task')
     })
     .catch ((err)=>{
         console.log(err)
@@ -98,13 +98,13 @@ var showList = async (user, client, flag) => {
 }
 
 client.on('message',(msg)=>{
+
     var s_msg = formatMessage(msg.body)
-  
     if (s_msg === 'HI') {
         client.sendMessage(msg.from,'hi');
         client.sendMessage(msg.from,btn)
     }
-
+    
     else if (msg?._data?.type === 'buttons_response') {
         if (msg.selectedButtonId == 'prg') {
             showList(msg.from, client, 'p').then(()=>{
@@ -122,10 +122,12 @@ client.on('message',(msg)=>{
         }
     }
 
-    else if(msg?._data?.type === 'list_response') {
+    else if(msg?._data?.type === 'list_response' ) {
+        // console.log(msg?._data?.quotedMsg?.list?.description)
         var listType = msg?._data?.quotedMsg?.list?.buttonText
-        
+        console.log(listType)
         if (listType == 'list of task') {
+
             for (i=0;i<=actionQ.length;i++){
                 if (actionQ[i].userID == msg.from && actionQ[i].additional == '') {
                     var res = actionQ[i];
@@ -141,6 +143,7 @@ client.on('message',(msg)=>{
             }
         }
         else if ( listType == 'rating') {
+
             for (i=0;i<=actionQ.length;i++){
                 if (actionQ[i].userID == msg.from) {
                     if (actionQ[i].action == 'prg' && actionQ[i].additional != '' ) {
@@ -149,12 +152,29 @@ client.on('message',(msg)=>{
                         res.progress = msg.body;
                     }                  
                     watcher(actionQ,client,btn)
+                    
                     return;
                 }
             }
         }
     }
-    else {
+    // else if (msg?._data?.quotedMsg?.list?.description) {
+    //     console.log('------3------')
+
+    //     var action = msg?._data?.quotedMsg?.list?.description;
+    //     // console.log(action)
+    //     loopOverQueue(msg.from)
+    //     if (action == 'set progress' || action == 'delete task'){
+    //         actionQ.push({
+    //             userID: msg.from,
+    //             action: action,
+    //             additional:msg.body
+    //         })
+    //     }
+    //     watcher(actionQ,client,btn)
+    // }
+    else if (s_msg != 'HI'){
+
         for (i=0;i<=actionQ.length;i++){
             if (actionQ[i].additional == '' && actionQ[i].userID == msg.from){
                 var res = actionQ[i];
@@ -167,4 +187,23 @@ client.on('message',(msg)=>{
     
 })
 
-client.initialize();
+
+// 
+var ask = new job ('00 00 10 * * *',()=>{
+    console.log(ask.running)
+    connection.query(`CALL users_without_progress()`,[],(err,results)=>{
+        if (err) console.log(err)
+        var userIds = results[0];
+        console.log('results ------',results)
+        userIds.forEach((userId)=>{
+            actionQadd(userId.user,'prg')
+            client.sendMessage(userId.user,"im working")
+
+            showList(userId.user,client,'p')
+        })
+    })
+})
+
+client.initialize().then(()=>{
+    ask.start()
+})

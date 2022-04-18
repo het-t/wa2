@@ -37,11 +37,11 @@ var watcher = (queue,client,btn)=>{
         }
         else if (action == 'prg') {
             if (obj.additional && obj.progress) {
-                connection.query(`CALL progress(?,?,?)`,[obj.userID,obj.additional,obj.progress],(err,results,fields)=>{
+                connection.query(`CALL progress(?,?,?)`,[obj.userID,obj.additional,obj.progress],(err,results,fields)=>{                   
                     if (err){
                         console.log(err)
                     }
-                    else if (results[0]) {
+                    else {
                         client.sendMessage(obj.userID,'porgress rating updated')
                         client.sendMessage(obj.userID,btn)
                         queue.splice(index,1)
@@ -52,11 +52,12 @@ var watcher = (queue,client,btn)=>{
         else if (action == 'rmt') {
             
                 connection.query(`CALL remove_task(?,?)`,[obj.userID,obj.additional],(err,results,fields)=>{
-
+                  
                     if (err){
                         console.log(err)
                     }
-                    else if (results[0]) {
+                    else  {
+                       
                         client.sendMessage(obj.userID,'task removed')
                         client.sendMessage(obj.userID,btn)
                         queue.splice(index,1)
