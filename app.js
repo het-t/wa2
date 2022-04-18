@@ -69,20 +69,28 @@ var showList = async (user, client, flag) => {
     listData = await list_task(user)
  
     new Promise ((resolve,reject)=>{
-            listData.forEach(obj => {
-                if (listJSON2 !== '') {listJSON2+=','}
-                var taskID = obj.taskID;
-                var taskDesc = obj.description;
-                listJSON2+=`{"rowId":"${taskID}","title":"${taskDesc}","description":""}`;
-            })
-            resolve(listJSON1+listJSON2+listJSON3);
+            if (listData){    
+                listData.forEach(obj => {
+                    if (listJSON2 !== '') {listJSON2+=','}
+                    var taskID = obj.taskID;
+                    var taskDesc = obj.description;
+                    listJSON2+=`{"rowId":"${taskID}","title":"${taskDesc}","description":""}`;
+                })
+                resolve(listJSON1+listJSON2+listJSON3);
+            }
+            else {
+                reject()
+            }
         })
 
     .then((list)=>{
         list = JSON.parse(list)
         if (flag == 'p')  var l = new List('set progress','list of task',list,'','')
-        else if (flag == 'r') var l = new List('remove task','list of task',list,'','') 
+        else if (flag == 'r') var l = new List('remove task','list of task',list,'','')
         client.sendMessage(user,l)
+    },()=>{
+        client.sendMessage(user,'invalid operation : \n you don\'t have any task \n first add new task')
+        reject()
     })
     .catch ((err)=>{
         console.log(err)
@@ -95,20 +103,22 @@ client.on('message',(msg)=>{
     if (s_msg === 'HI') {
         client.sendMessage(msg.from,'hi');
         client.sendMessage(msg.from,btn)
-        // client.sendMessage(msg.from,btn);
-
     }
 
     else if (msg?._data?.type === 'buttons_response') {
-        actionQadd(msg.from, msg.selectedButtonId)
         if (msg.selectedButtonId == 'prg') {
-            showList(msg.from, client, 'p')
+            showList(msg.from, client, 'p').then(()=>{
+                actionQadd(msg.from, msg.selectedButtonId)
+            })
         }
         else if (msg.selectedButtonId == 'snt') {
+            actionQadd(msg.from, msg.selectedButtonId)
             client.sendMessage(msg.from,'enter description for new task')
         }
         else if (msg.selectedButtonId == 'rmt') {
-            showList(msg.from, client, 'r')
+            showList(msg.from, client, 'r').then(()=>{
+                actionQadd(msg.from, msg.selectedButtonId)
+            })
         }
     }
 
@@ -146,7 +156,7 @@ client.on('message',(msg)=>{
     }
     else {
         for (i=0;i<=actionQ.length;i++){
-            if (actionQ[i].additional == ''){
+            if (actionQ[i].additional == '' && actionQ[i].userID == msg.from){
                 var res = actionQ[i];
                 res.additional = msg.body;
             }  

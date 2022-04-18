@@ -72,7 +72,6 @@ var getProgressData =  (userID)=>{
 
 //helper function 2
 var createReport = (dataForPdf,userID)=>{
-    console.log('data for pdf .....',dataForPdf)
     var htmlReportData = '';
     dataForPdf.forEach(obj => {
         var m = obj.date.getMonth()+1;
@@ -109,6 +108,8 @@ var p = async () => {
 
 var main = async ()=>{
     await client.initialize()
+    var media = MessageMedia.fromFilePath('./p.pdf')
+    client.sendMessage('919879034832@c.us',media)
     await u()
     setTimeout(()=>{
         p()
