@@ -1,7 +1,10 @@
-const { List } = require('whatsapp-web.js');
-var {client, Buttons} = require('./allModules.js')
-var {watcher, connection, set_new_task} = require('./db.js')
+// const { List } = require('whatsapp-web.js');
+var {client, Buttons, List} = require('./allModules.js')
+var {watcher, connection} = require('./db.js')
 const { job } = require('cron');
+var {u, getProgressData, createReport} = require('./rec.js')
+var sendPdf = require('./sendRec.js').sendPdf;
+
 
 var formatMessage = (str)=> {
     str = str.toUpperCase();
@@ -187,9 +190,10 @@ client.on('message',(msg)=>{
     
 })
 
+var jobString = '00 08 13 * * *'
 
-// 
-var ask = new job ('00 00 10 * * *',()=>{
+// '00 00 10 * * *'
+var ask = new job (jobString,()=>{
     console.log(ask.running)
     connection.query(`CALL users_without_progress()`,[],(err,results)=>{
         if (err) console.log(err)
@@ -204,6 +208,24 @@ var ask = new job ('00 00 10 * * *',()=>{
     })
 })
 
+// '00 00 22 * * 0 '
+var shceduleSending = new job(jobString,()=>{
+    try {
+        u.then(async (user_id_array)=>{
+            await user_id_array.forEach((uidObj)=>{
+                getProgressData(uidObj.user).then((obj)=>{
+                    createReport(obj.res,obj.uid)
+                })
+            })
+        })
+    }
+    finally{
+        sendPdf()
+    }
+    
+})
+
 client.initialize().then(()=>{
     ask.start()
+    shceduleSending.start();
 })

@@ -1,4 +1,4 @@
-var {Client, Buttons} = require('whatsapp-web.js');
+var {Client, Buttons,List} = require('whatsapp-web.js');
 var fs = require('fs');
 var qrcode = require('qrcode-terminal');
 
